@@ -1,30 +1,53 @@
 const redis = require('redis');
-const { promisify } = require('util');
+// const { promisify } = require('util');
 const client = redis.createClient();
-
-// const hsetAsync = promisify(client.hset).bind(client);
 
 client.on('error', (err) => {
     console.log('Redis error: ', err);
 });
 
-async function setTaskStatus(username, taskKey, status, outputFile = null) {
-    const task = { status };
-    if (outputFile) {
-        task.outputFile = outputFile;
-    }
-    await hsetAsync(username, taskKey, task);
+async function addNewTaskToRedis(username, taskKey){
+    await client.connect(6379, "127.0.0.1").then(async (res) => {
+        console.log(username, taskKey, "connected");
+        await client.lPush(username, taskKey);
+        console.log("Lpush new task done");
+        // let info = {
+        //     status : "in queue",
+        //     taskKey: taskKey
+        // }
+        // await client.set(taskKey, info);
+        // console.log("set task key-val done");
+        await client.disconnect();
+        setTaskStatusToRedis(username, taskKey, "in queue");
+    }).catch((err) => console.log("error happened in adding new task to redis [redis.js::addNewTaskToRedis]"))
 }
 
-async function getTaskFromRedis(username, taskKey) {
+async function setTaskStatusToRedis(username, taskKey, status, outputFile = null) {
+    await client.connect(6379, "127.0.0.1").then(async (res) => {
+        console.log(username, taskKey, "connected");
+        let info = {
+            taskKey: taskKey,
+            status: status
+        }
+        await client.set(taskKey, JSON.stringify(info));
+        console.log("set task key-val done");
+        await client.disconnect();
+    }).catch((err) => console.log("error happened in setting task status to redis [redis.js::setTaskStatusToRedis]"))
+}
+
+async function getTaskStatusFromRedis(username, taskKey) {
     return new Promise((resolve, reject) => {
-        client.hgetall(`${username}:${taskKey}`, (err, data) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve(data);
-        });
+        client.connect(6379, "127.0.0.1").then( async (res) => {
+            console.log(username, taskKey, "connected");
+            let result = await client.get(taskKey);
+            console.log("retrieved info:", result);
+            resolve(JSON.parse(result));
+            await client.disconnect();
+        }).catch((err) => {
+            console.log("error happened when querying task status [redis.js::getTaskStatusFromRedis]");
+            resolve("getTaskStatusFromRedis failed");
+        })
     });
 }
 
-module.exports = { setTaskStatus, getTaskFromRedis };
+module.exports = { setTaskStatusToRedis, getTaskStatusFromRedis, addNewTaskToRedis };

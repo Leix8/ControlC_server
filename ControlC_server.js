@@ -1,9 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { addTaskToQueue, getTaskStatus } = require('./bull_manager');
-const { getTaskFromRedis } = require('./redis');
-
+const { addTaskToQueue } = require('./bull_manager');
+// const { getTaskFromRedis } = require('./redis');
+let redis = require("./redis");
 const app = express();
 const port = 8448;
 
@@ -25,19 +25,22 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const taskKey = `${username}-${Date.now()}`;
-    // await addTaskToQueue(username, file, taskKey);
+    await redis.addNewTaskToRedis(username, taskKey);
+    console.log("[ControlC_server] adding new task to redis passed");
+    await addTaskToQueue(username, file, taskKey);
+
     res.send({ taskKey });
 });
 
 app.get('/checkStatus', async (req, res) => {
-    const { username, taskKey } = req.query;
+    const username = req.query.username;
+    const taskKey =  req.query.taskKey;
+    console.log("querying for: ", username, taskKey);
 
     if (!username || !taskKey) {
         return res.status(400).send('Username and task key are required.');
     }
-
-    const status = await getTaskStatus(username, taskKey);
-    res.send({ status });
+    res.send(await redis.getTaskStatusFromRedis(username, taskKey));
 });
 
 app.get('/download', async (req, res) => {
@@ -47,7 +50,7 @@ app.get('/download', async (req, res) => {
         return res.status(400).send('Username and task key are required.');
     }
 
-    const task = await getTaskFromRedis(username, taskKey);
+    const task = await redis.getTaskStatusFromRedis(username, taskKey);
     if (task.status === 'Done') {
         const filePath = path.join(__dirname, 'public/outputs', task.outputFile);
         res.download(filePath);

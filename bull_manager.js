@@ -19,12 +19,10 @@ taskQueue.process(async (job) => {
 });
 
 async function addTaskToQueue(username, file, taskKey) {
-    await setTaskStatus(username, taskKey, 'waiting');
+    // await setTaskStatus(username, taskKey, 'waiting');
+    console.log("[bull_manager] setTaskStatus passed");
     taskQueue.add({ username, file, taskKey });
+    console.log("[bull_manager] add to taskQueue passed");
 }
 
-async function getTaskStatus(username, taskKey) {
-    return await getTaskFromRedis(username, taskKey);
-}
-
-module.exports = { addTaskToQueue, getTaskStatus };
+module.exports = { addTaskToQueue };
