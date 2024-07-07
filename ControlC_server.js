@@ -1,18 +1,21 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const { addTaskToQueue } = require('./bull_manager');
-// const { getTaskFromRedis } = require('./redis');
-let redis = require("./redis");
 const app = express();
-const port = 8448;
-
-const upload = multer({ dest: 'public/inputs/' });
-
 app.use(express.json());
 
+const multer = require('multer');
+const upload = multer({ dest: 'public/inputs/' });
+
+const path = require('path');
+
+const { addTaskToQueue } = require('./bull_manager');
+
+const port = 8448;
+const TAG = "[ControlC_server]";
+
+let redis = require("./redis");
+
 app.get('/test', async (req, res) => {
-    console.log("test request received, ControlC_server is running at https");
+    console.log(TAG, "test request received, ControlC_server is running at https");
     res.send( "ControlC_server is running at https" );
 });
 
@@ -26,16 +29,17 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
     const taskKey = `${username}-${Date.now()}`;
     await redis.addNewTaskToRedis(username, taskKey);
-    console.log("[ControlC_server] adding new task to redis passed");
+    console.log(TAG, "adding new task to redis finished");
     await addTaskToQueue(username, file, taskKey);
-
-    res.send({ taskKey });
+    console.log(TAG, "adding task to queue finished");
+    let result = await redis.getTaskStatusFromRedis(username, taskKey);
+    res.send(result);
 });
 
 app.get('/checkStatus', async (req, res) => {
     const username = req.query.username;
-    const taskKey =  req.query.taskKey;
-    console.log("querying for: ", username, taskKey);
+    const taskKey =  req.query.key;
+    console.log(TAG, "querying for: ", username, taskKey);
 
     if (!username || !taskKey) {
         return res.status(400).send('Username and task key are required.');
@@ -60,5 +64,5 @@ app.get('/download', async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`ControlC server running at http://localhost:${port}`);
+    console.log(TAG, `ControlC server running at http://localhost:${port}`);
 });
