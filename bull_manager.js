@@ -49,26 +49,11 @@ const processTask = (async (job, done) => {
         console.log(TAG, "check task status before start process:", username, taskKey, status);
         await redis.setTaskStatusToRedis(username, taskKey, 'processing');
         
-        console.log(TAG, "do something to process task");
-        // await runTaskScript(username, taskKey);
-        // let cmd = `python3 process_task.py`;
-        // console.log(TAG, "start processing...");
-        // exec(cmd, {windowsHide: true}, (error, stdout, stderr) => {
-        //     if (error){
-        //         console.error(TAG, "error: ", error.message);
-        //         done();
-        //         return;
-        //     }
-        //     if (stderr){
-        //         console.error(TAG, "stderr: ", stderr);
-        //         done();
-        //         return;
-        //     }
-        //     console.log(TAG, "stdout: ", stdout);
-        //     done();
-        // })
-
-        await redis.setTaskStatusToRedis(username, taskKey, 'Done');
+        console.log(TAG, `processing task ${username}: ${taskKey} ...`);
+        await runTaskScript(username, taskKey);
+        const result = await redis.setTaskStatusToRedis(username, taskKey, 'Done');
+        done(null, JSON.stringify(result));
+        
     } catch (error) {
         await redis.setTaskStatusToRedis(username, taskKey, 'Failed');
         console.error(TAG, `error happened in processing task ${username} ${taskKey}`);
@@ -76,16 +61,31 @@ const processTask = (async (job, done) => {
     }
 });
 
+taskQueue.on('completed', (job, result) => {
+    const { username, file, taskKey } = job.data;
+    console.log(TAG, `Job ${job.id}: ${taskKey} is completed, ${result}`);
+    // Automatically discard failed jobs
+    job.remove().then(() => {
+        console.log(TAG, `Completed job ${job.id}: ${taskKey} removed from the queue`);
+    }).catch((err) => {
+        console.error(TAG, `Failed to remove completed job ${job.id}:${taskKey} ${err.message}`);
+    });
+});
+
 taskQueue.on('failed', (job, err) => {
     const { username, file, taskKey } = job.data;
     console.log(`Job ${job.id}: ${taskKey} failed with error: ${err.message}`);
-    // Automatically discard failed jobs
     job.remove().then(() => {
         console.log(TAG, `Failed job ${job.id}: ${taskKey} removed from the queue`);
     }).catch((err) => {
         console.error(TAG, `Failed to remove job ${job.id}:${taskKey} ${err.message}`);
     });
 });
+
+taskQueue.on('active', (job, jobPromise) => {
+    const {username, file, taskKey} = job.data;
+    console.log(TAG, `job ${username} ${taskKey} now set to active and is ready to be processed`);
+})
 
 taskQueue.on('stalled', async (job) => {
     const { username, file, taskKey } = job.data;
@@ -99,57 +99,24 @@ taskQueue.on('stalled', async (job) => {
     }
 });
 
-async function processJob(job){
-    const { username, file, taskKey } = job.data;
-    console.log(TAG, `check task to be processed: ${username}, ${taskKey}`);
-    const status = await redis.getTaskStatusFromRedis(username, taskKey);
-    console.log(TAG, prettyjson.render(status));
-    try {
-        console.log(TAG, "check task status before start process:", username, taskKey, status);
-        await redis.setTaskStatusToRedis(username, taskKey, 'processing');
-        
-        console.log(TAG, "do something to process task");
-        // await runTaskScript(username, taskKey);
-        // let cmd = `python3 process_task.py`;
-        // console.log(TAG, "start processing...");
-        // exec(cmd, {windowsHide: true}, (error, stdout, stderr) => {
-        //     if (error){
-        //         console.error(TAG, "error: ", error.message);
-        //         done();
-        //         return;
-        //     }
-        //     if (stderr){
-        //         console.error(TAG, "stderr: ", stderr);
-        //         done();
-        //         return;
-        //     }
-        //     console.log(TAG, "stdout: ", stdout);
-        //     done();
-        // })
+taskQueue.process(1, processTask);
 
-        await redis.setTaskStatusToRedis(username, taskKey, 'Done');
-    } catch (error) {
-        await redis.setTaskStatusToRedis(username, taskKey, 'Failed');
-        console.error(TAG, `error happened in processing task ${username} ${taskKey}`);
-        console.error(TAG, error);
-    }
-}
-taskQueue.process(1, async (job) => {
-    const { username, file, taskKey } = job.data;
-    console.log(TAG, `check task to be processed: ${username}, ${taskKey}`);
-    const status = await redis.getTaskStatusFromRedis(username, taskKey);
-    console.log(TAG, prettyjson.render(status));
-    try {
-        console.log(TAG, "check task status before start process:", username, taskKey);
-        await redis.setTaskStatusToRedis(username, taskKey, 'processing');
+// taskQueue.process(1, async (job) => {
+//     const { username, file, taskKey } = job.data;
+//     console.log(TAG, `check task to be processed: ${username}, ${taskKey}`);
+//     const status = await redis.getTaskStatusFromRedis(username, taskKey);
+//     console.log(TAG, prettyjson.render(status));
+//     try {
+//         console.log(TAG, "check task status before start process:", username, taskKey);
+//         await redis.setTaskStatusToRedis(username, taskKey, 'processing');
         
-        console.log(TAG, "do something to process task");
-        await runTaskScript(username, taskKey);
-        await redis.setTaskStatusToRedis(username, taskKey, 'Done');
-    } catch (error) {
-        await redis.setTaskStatusToRedis(username, taskKey, 'Failed');
-        console.error(TAG, `error happened in processing task ${username} ${taskKey}`);
-        console.error(TAG, error);
-    }
-});
+//         console.log(TAG, "do something to process task");
+//         await runTaskScript(username, taskKey);
+//         await redis.setTaskStatusToRedis(username, taskKey, 'Done');
+//     } catch (error) {
+//         await redis.setTaskStatusToRedis(username, taskKey, 'Failed');
+//         console.error(TAG, `error happened in processing task ${username} ${taskKey}`);
+//         console.error(TAG, error);
+//     }
+// });
 module.exports = { taskQueue, addTaskToQueue };
