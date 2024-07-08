@@ -44,7 +44,7 @@ const processTask = (async (job, done) => {
     const { username, file, taskKey } = job.data;
     console.log(TAG, `check task to be processed: ${username}, ${taskKey}`);
     const status = await redis.getTaskStatusFromRedis(username, taskKey);
-    console.log(TAG, prettyjson.render(status));
+    // console.log(TAG, `\n`, prettyjson.render(status));
     try {
         console.log(TAG, "check task status before start process:", username, taskKey, status);
         await redis.setTaskStatusToRedis(username, taskKey, 'processing');
