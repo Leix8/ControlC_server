@@ -27,7 +27,7 @@ async function addNewTaskToRedis(username, taskKey){
         console.log(TAG, "addNewTaskToRedis", username, taskKey, "connected");
         await client.lPush(username, taskKey);
         console.log(TAG, "Lpush new task done");
-        return await setTaskStatusToRedis(username, taskKey, "in queue");
+        return await setTaskStatusToRedis(username, taskKey, "in queue", '/home/lei/workspace/ControlC_server/resources/christmas_bear_ply/christmas_bear.ply');
     } catch(err){
         console.error(TAG, "error happened in adding new task to redis [redis.js::addNewTaskToRedis]");
         console.error(TAG, err);

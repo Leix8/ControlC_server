@@ -1,9 +1,27 @@
 const express = require('express');
 const app = express();
+const bodyParser = require('body-parser');
+app.use(bodyParser.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.json());
 
 const multer = require('multer');
-const upload = multer({ dest: 'public/inputs/' });
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // console.log(req.body)
+        //cb函数设置保存路径，__dirname为当前文件所在目录
+        let root_path = path.join(__dirname, "public", "inputs")
+        cb(null, root_path)
+    },
+
+    filename: function (req, file, cb) {
+        //文件名 = 时间戳 + 文件名
+        let filename = "input_" + new Date().getTime() + "_" + file.originalname
+        //cb函数设置filename
+        cb(null, filename)
+    }
+})
+const upload = multer({ storage: storage });
 
 const path = require('path');
 
@@ -22,18 +40,20 @@ app.get('/test', async (req, res) => {
     res.send( "ControlC_server is running at https" );
 });
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', upload.fields([{ name: 'input_video', maxCount: 1 }]), async (req, res) => {
     const { username } = req.body;
-    const file = req.file;
+    // const file = req.file;
+    const input_video = req.files['input_video'][0];
 
-    if (!username || !file) {
+    if (!username || !input_video) {
         return res.status(400).send('Username and file are required.');
     }
+    console.log(TAG, "check input video:", input_video);
 
-    const taskKey = `${username}-${Date.now()}`;
+    const taskKey = input_video.filename;
     let result = await redis.addNewTaskToRedis(username, taskKey);
     console.log(TAG, "adding new task to redis finished");
-    await addTaskToQueue(username, file, taskKey);
+    await addTaskToQueue(username, input_video.path, taskKey);
     res.send(result);
 });
 

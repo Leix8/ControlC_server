@@ -51,7 +51,8 @@ const processTask = (async (job, done) => {
         
         console.log(TAG, `processing task ${username}: ${taskKey} ...`);
         await runTaskScript(username, taskKey);
-        const result = await redis.setTaskStatusToRedis(username, taskKey, 'Done');
+        
+        const result = await redis.setTaskStatusToRedis(username, taskKey, 'Done', '/home/lei/workspace/ControlC_server/resources/christmas_bear_ply/christmas_bear.ply');
         done(null, JSON.stringify(result));
         
     } catch (error) {
