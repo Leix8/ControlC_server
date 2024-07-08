@@ -27,7 +27,7 @@ async function addNewTaskToRedis(username, taskKey){
         console.log(TAG, "addNewTaskToRedis", username, taskKey, "connected");
         await client.lPush(username, taskKey);
         console.log(TAG, "Lpush new task done");
-        setTaskStatusToRedis(username, taskKey, "in queue");
+        return await setTaskStatusToRedis(username, taskKey, "in queue");
     } catch(err){
         console.error(TAG, "error happened in adding new task to redis [redis.js::addNewTaskToRedis]");
         console.error(TAG, err);
@@ -45,6 +45,8 @@ async function setTaskStatusToRedis(username, taskKey, status, outputFile = null
         }
         await client.set(taskKey, JSON.stringify(info));
         console.log(TAG, "updating task status to redis done");
+        return await getTaskStatusFromRedis(username, taskKey);
+
     }catch (err){
         console.error(TAG, "error happened in setting task status to redis [redis.js::setTaskStatusToRedis]");
         console.error(TAG, err);
