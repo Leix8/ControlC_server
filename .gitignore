@@ -1,2 +1,4 @@
 public
 task.log
+logs
+fake_process_task.py

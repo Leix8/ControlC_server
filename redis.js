@@ -24,10 +24,10 @@ function checkClient() {
 async function addNewTaskToRedis(username, taskKey){
     checkClient();
     try{
-        console.log(TAG, "addNewTaskToRedis", username, taskKey, "connected");
+        console.log(TAG, `addNewTaskToRedis connected: ${username}: ${taskKey}`);
         await client.lPush(username, taskKey);
         console.log(TAG, "Lpush new task done");
-        return await setTaskStatusToRedis(username, taskKey, "in queue", '/home/lei/workspace/ControlC_server/resources/christmas_bear_ply/christmas_bear.ply');
+        return await setTaskStatusToRedis(username, taskKey, "in queue", '/resources/dummy_html.html');
     } catch(err){
         console.error(TAG, "error happened in adding new task to redis [redis.js::addNewTaskToRedis]");
         console.error(TAG, err);
@@ -37,7 +37,7 @@ async function addNewTaskToRedis(username, taskKey){
 async function setTaskStatusToRedis(username, taskKey, status, outputFile = null) {
     checkClient();
     try{
-        console.log(TAG, "setTaskStatusToRedis", username, taskKey, "connected");
+        console.log(TAG, `setTaskStatusToRedis connected: ${username}: ${taskKey} = ${status}, ${outputFile}`);
         let info = {
             taskKey: taskKey,
             status: status,
@@ -56,7 +56,7 @@ async function setTaskStatusToRedis(username, taskKey, status, outputFile = null
 async function getTaskStatusFromRedis(username, taskKey){
     checkClient();
     try{
-        console.log(TAG, "getTaskStatusFromRedis", username, taskKey, "connected");
+        console.log(TAG, `getTaskStatusFromRedis connected: ${username}: ${taskKey}`);
         return new Promise(async (resolve) => {
             let result = await client.get(taskKey);
             console.log(TAG, prettyjson.render(result));
